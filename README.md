@@ -1,2 +1,2 @@
 # DuckSlide
-Collaborative repository for personal projects with Barlos.
+Collaborative repository for projects with Barlos.
