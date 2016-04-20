@@ -1,11 +1,18 @@
 package assignment3;
 
-
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Optional;
 
+/*
 import assignment2.appropriate;
 import assignment2.before;
 import assignment2.display;
@@ -17,6 +24,7 @@ import assignment2.topLeftY;
 import assignment2.topleftX;
 import assignment2.MyGUI.MouseHandlerClass;
 import assignment2.MyGUI.NameValuePair;
+ */
 import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.SequentialTransition;
@@ -55,10 +63,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebHistory;
 
-
 public class MyGUI extends Application {
+	protected Stage primaryStage;
 	protected WebEngine engine;
-	protected String currentURL = "http://www.google.ca/";
 	protected WebView browserView;//this is so that browserView still exists outside of main
 	private MouseHandlerClass mouseHandler;
 	private Scene scene;
@@ -73,6 +80,9 @@ public class MyGUI extends Application {
 	private MenuItem getHelpItem;
 	private CheckMenuItem showHistoryItem;
 	private MenuItem showAboutItem;
+	private Menu settingsMenu;
+	private MenuItem homepageItem;
+	private MenuItem downloadsItem;
 	private HBox browserBar;
 	private Button backButton;
 	private Button forwardButton;
@@ -81,12 +91,22 @@ public class MyGUI extends Application {
 	private ListView<String> historyView;
 	private WebHistory webHistory;
 
+	private String downloadDirectory = "./";
+	private String homepage = "http://www.google.ca/";
+
 	public static void main(String[] args) {		launch(args);	}
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
 		// instantiates the mouse handler class
 		this.mouseHandler = new MouseHandlerClass();
+		// captures the primary stage variable
+		this.primaryStage = primaryStage;
+		// initialises the browser view object
+		this.browserView = new WebView();
+		// gets the web engine object from the browser view
+		this.engine = this.browserView.getEngine();
+
 		// create the bookmark button object
 		this.bookmarkButton = new Button("Add Bookmark");
 
@@ -109,10 +129,53 @@ public class MyGUI extends Application {
 		/***********************************BOOKMARKS MENU********************************************/
 		// create the bookmarks menu object
 		this.bookMarksMenu = new Menu("Bookmarks");
+		// initialize the bookmarks items array
+		this.bookmarkItems = new ArrayList<String>();
 		// function that adds a url to the bookmarks menu
-		addBookmark(currentURL);		
+		this.addBookmark("http://www.google.ca/");		
 
 		/***********************************SETTINGS MENU********************************************/
+		this.settingsMenu = new Menu("Settings");
+		
+		this.homepageItem = new MenuItem("Homepage");
+		
+		this.homepageItem.setOnAction((event) -> {
+			TextInputDialog dialog = new TextInputDialog("Type here");
+			dialog.setTitle("Change the browser homepage");
+			dialog.setHeaderText("Use this wizard to change your browser homepage.");
+			dialog.setContentText("Enter the URL for the new homepage:");
+			
+			// Traditional way to get the response value.
+			Optional<String> result = dialog.showAndWait();
+			if (result.isPresent()){
+				this.homepage = result.get();
+				// TODO: parse the result and add in missing parts like http: etc...
+				this.saveSettings();
+			}
+		});
+		
+		this.downloadsItem = new MenuItem("Downloads");
+		
+		this.downloadsItem.setOnAction((event) -> {
+			TextInputDialog dialog = new TextInputDialog("Type here");
+			dialog.setTitle("Change the browser downloads directory");
+			dialog.setHeaderText("Use this wizard to change where your downloads are saved.");
+			dialog.setContentText("Enter the entire, complete, full filepath for the new download directory:");
+			
+			// Traditional way to get the response value.
+			Optional<String> result = dialog.showAndWait();
+			if (result.isPresent()){
+				// TODO: parse the result and determine etc...
+				File dir = new File(result.get());
+				boolean successful = dir.mkdirs();
+				if (successful){
+					this.downloadDirectory = result.get();
+					this.saveSettings();
+				} else {
+					System.out.println("The directory could not be created, check folder write permissions");
+				}
+			}
+		});
 
 
 		/*******************************HELP MENU************************************/
@@ -190,8 +253,7 @@ public class MyGUI extends Application {
 			@Override
 			public void handle(KeyEvent event) {
 				if (event.getCode().equals(KeyCode.ENTER)){
-					currentURL = URLField.getText();
-					engine.load(currentURL);
+					engine.load(URLField.getText());
 				}
 			}
 		});
@@ -210,11 +272,6 @@ public class MyGUI extends Application {
 		this.browserBar.getChildren().addAll(this.backButton, this.URLField, this.bookmarkButton, this.forwardButton);
 
 		/*******************************WEB VIEW*********************************************/
-		// initialises the browser view object
-		this.browserView = new WebView();
-		// gets the web engine object from the browser view
-		this.engine = this.browserView.getEngine();
-
 		//This is a 3-parameter Lambda function for listening for changes
 		// of state for the web page loader.				VVV  VVV         VVV
 		engine.getLoadWorker().stateProperty().addListener(( ov, oldState,  newState)->
@@ -232,7 +289,7 @@ public class MyGUI extends Application {
 				}
 				// bookmarks button is disabled if that page already exists in the menu. 	
 				for (int i = 0; i < this.bookMarksMenu.getItems().size(); i++){
-					if (this.bookMarksMenu.getItems().get(i).getText().equals(this.currentURL)){
+					if (this.bookMarksMenu.getItems().get(i).getText().equals(this.engine.getLocation())){
 						this.bookmarkButton.setDisable(true);
 					}
 				}
@@ -248,7 +305,7 @@ public class MyGUI extends Application {
 		this.webHistory.getEntries().addListener(new ListChangeListener<WebHistory.Entry>() {
 			@Override
 			public void onChanged(ListChangeListener.Change <? extends WebHistory.Entry> change) {
-				System.out.println("Detected a change!");
+				//System.out.println("Detected a change!");
 				change.next();
 				// if an item was removed, remove it from the history view
 				for (WebHistory.Entry e : change.getRemoved()) {
@@ -289,7 +346,19 @@ public class MyGUI extends Application {
 		// monitor the location url, and if newLoc ends with one of the download file endings, create a new DownloadTask.
 		engine.locationProperty().addListener(new ChangeListener<String>() {
 			@Override public void changed(ObservableValue<? extends String> observableValue, String oldLoc, String newLocation) {
-				if(newLocation.endsWith(/* one of the download endings*/  ) )
+				if(newLocation.endsWith(".exe") 
+						|| newLocation.endsWith("PDF")
+						|| newLocation.endsWith(".ZIP")
+						|| newLocation.endsWith(".DOC")
+						|| newLocation.endsWith(".DOCX")
+						|| newLocation.endsWith(".XLS")
+						|| newLocation.endsWith(".XLSX")
+						|| newLocation.endsWith(".ISO")
+						|| newLocation.endsWith(".IMG")
+						|| newLocation.endsWith(".DMG")
+						|| newLocation.endsWith(".TAR")
+						|| newLocation.endsWith(".TGZ")
+						|| newLocation.endsWith(".JAR"))
 				{
 					DownloadBar newDownload = new DownloadBar(newLocation);		  
 				}
@@ -337,6 +406,8 @@ public class MyGUI extends Application {
 		MenuItem newBookMark = new MenuItem(s);
 		// set the bookmark menu item's on click event to load the specified page
 		newBookMark.setOnAction( (event) -> { this.engine.load(s); });
+		// add the bookmark to the bookmark items array
+		this.bookmarkItems.add(s);
 		this.bookMarksMenu.getItems().addAll(newBookMark);
 		this.bookmarkButton.setDisable(true);
 	}
@@ -430,7 +501,7 @@ public class MyGUI extends Application {
 			}
 
 			if (event.getSource().equals(bookmarkButton)){
-				addBookmark(currentURL);
+				addBookmark(engine.getLocation());
 			}
 
 			if (event.getSource().equals(backButton)){
@@ -445,4 +516,136 @@ public class MyGUI extends Application {
 
 	}
 
+
+	/*****************************SAVE SETTINGS*******************************/
+
+	public void saveSettings() {
+		/*
+		writeObject(bookmarkItems);
+		You should use a BufferedOutputWriter to write the file one line at a time,
+		. You read in one line at a time, and see if each line contains  (screenX, screenY, height, width, etc). If it does, 
+		then you know what the number is that comes after the "=" sign. This part should have nothing to do with an arraylist.
+		// ArrayList<String> (bookmarkItems)
+
+		ObjectInput
+		 */
+
+		try (BufferedWriter bkmkWriter = Files.newBufferedWriter(Paths.get("./bkmks.txt"));){
+
+			for (int i = 0; i < bookmarkItems.size(); i++) {
+				bkmkWriter.write(bookmarkItems.get(i));
+				bkmkWriter.newLine();
+			}
+			bkmkWriter.close();
+
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+
+		ArrayList<NameValuePair> savedSettings = new ArrayList<NameValuePair>();
+
+		NameValuePair heightValue = new NameValuePair("height", String.valueOf(primaryStage.getHeight()));
+		savedSettings.add(heightValue);
+
+		NameValuePair widthValue = new NameValuePair("width", String.valueOf(primaryStage.getWidth()));
+		savedSettings.add(widthValue);
+
+		NameValuePair screenXValue = new NameValuePair("screenX", String.valueOf(primaryStage.getX()));
+		savedSettings.add(screenXValue);
+
+		NameValuePair screenYValue = new NameValuePair("screenY", String.valueOf(primaryStage.getY()));
+		savedSettings.add(screenYValue);
+
+		NameValuePair downloadFolder = new NameValuePair("downloadDirectory", downloadDirectory);
+		savedSettings.add(downloadFolder);
+
+		NameValuePair homepageSetting = new NameValuePair("homepage", homepage);
+		savedSettings.add(homepageSetting);
+
+		try(  BufferedWriter settingsWriter = Files.newBufferedWriter(Paths.get("./settings.txt"));){
+
+			for (int i = 0; i < savedSettings.size() -1; i++) {
+				NameValuePair nvp = (savedSettings.get(i));
+				settingsWriter.write( nvp.name + "=" + nvp.value );
+				settingsWriter.newLine();
+			}
+			settingsWriter.close();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	/*****************************LOAD SETTINGS*******************************/
+
+	public void readSettings() {
+		/*	open files and display
+				read before the = and after it too
+				Set the appropriate values for width/height, and screenX/screenY position, download directory, and home page.
+
+				BufferedInputReader to read the line one at a time
+		 */
+		this.bookmarkItems.clear();
+		try (BufferedReader reader = Files.newBufferedReader(Paths.get("./bkmk.txt"))){
+			String line = null;
+			while ((line = reader.readLine()) != null) {
+				this.bookmarkItems.add(line);
+			} 
+			reader.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		};
+
+		ArrayList<NameValuePair> settingsGotten = new ArrayList<NameValuePair>();
+		try (BufferedReader reader2 = Files.newBufferedReader(Paths.get("./settings.txt"))){
+			String line = null;
+			while ((line = reader2.readLine()) != null) {
+				String name = line.substring(0, line.indexOf("="));
+				String value = line.substring(line.indexOf("=")+1, line.length());
+				NameValuePair nvp = new NameValuePair(name,value);
+				settingsGotten.add(nvp);
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		for (int i = 0; i < settingsGotten.size(); i++){
+			switch (settingsGotten.get(i).name) {
+			case "height":
+				this.primaryStage.setHeight(Double.parseDouble(settingsGotten.get(i).value));
+				break;
+			case "width":
+				this.primaryStage.setWidth(Double.parseDouble(settingsGotten.get(i).value));
+				break;
+			case "screenX":
+				this.primaryStage.setX(Double.parseDouble(settingsGotten.get(i).value));
+				break;
+			case "screenY":
+				this.primaryStage.setY(Double.parseDouble(settingsGotten.get(i).value));
+				break;
+			case "downloadDirectory":
+				this.downloadDirectory = settingsGotten.get(i).value;
+				break;
+			case "homepage":
+				this.homepage = settingsGotten.get(i).value;
+				break;
+			}
+		}
+
+	}
+}
+
+/** Create a private inner class called NameValuePair: */
+class NameValuePair {
+	public String name;
+	public String value;
+
+	public NameValuePair(String string1, String string2) {
+		this.name = string1;
+		this.value = string2;
+	}
 }
