@@ -272,6 +272,8 @@ public class MyGUI extends Application {
 		this.browserBar.getChildren().addAll(this.backButton, this.URLField, this.bookmarkButton, this.forwardButton);
 
 		/*******************************WEB VIEW*********************************************/
+		// TODO: Implement a TabPane to contain the WebView.  Each pane must access the same webEngine object.
+		// BONUS MARKS part C
 		//This is a 3-parameter Lambda function for listening for changes
 		// of state for the web page loader.				VVV  VVV         VVV
 		engine.getLoadWorker().stateProperty().addListener(( ov, oldState,  newState)->
@@ -342,12 +344,14 @@ public class MyGUI extends Application {
 		primaryStage.setScene(scene);
 		primaryStage.show();
 
-
+		// TODO: re-implement this engine change listener so it  an catch other things like javascript, etc...
+		// TODO: make a private inner class out of this like the mouse listener
+		// --- > BONUS MARKS part A)
 		// monitor the location url, and if newLoc ends with one of the download file endings, create a new DownloadTask.
 		engine.locationProperty().addListener(new ChangeListener<String>() {
 			@Override public void changed(ObservableValue<? extends String> observableValue, String oldLoc, String newLocation) {
 				if(newLocation.endsWith(".exe") 
-						|| newLocation.endsWith("PDF")
+						|| newLocation.endsWith(".PDF")
 						|| newLocation.endsWith(".ZIP")
 						|| newLocation.endsWith(".DOC")
 						|| newLocation.endsWith(".DOCX")
@@ -366,8 +370,6 @@ public class MyGUI extends Application {
 		});	
 
 	}
-
-
 
 	// Tell the engine to go back 1 page in the history
 	public void goBack()
