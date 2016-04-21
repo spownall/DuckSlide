@@ -1,0 +1,13 @@
+package Lab_4;
+
+public class ParameterNotFoundException extends Exception {
+	
+	public ParameterNotFoundException (String message){
+		super(message);
+	}
+
+	
+	public void getParameter() {
+		
+	}
+}
