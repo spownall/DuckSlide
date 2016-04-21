@@ -95,6 +95,9 @@ public class DownloadBar extends HBox {
 		//Write the code here to handle a successful completion of the call() function.
 		@Override
 		protected void succeeded() {
+			// TODO: An animation and audio queue here, as the download bar "falls off" the window
+			// TODO: A successfully downloaded .exe file should prompt the user to run the file
+			// BONUS MARKS part B and D
 			super.succeeded();	
 			
 		}
