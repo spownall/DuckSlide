@@ -1,4 +1,4 @@
-package Lab_4;
+package assignment3;
 
 public class ParameterArrayFullException extends Exception {
 	

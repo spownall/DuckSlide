@@ -11,20 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Optional;
-
-/*
-import assignment2.appropriate;
-import assignment2.before;
-import assignment2.display;
-import assignment2.download;
-import assignment2.home;
-import assignment2.it;
-import assignment2.open;
-import assignment2.topLeftY;
-import assignment2.topleftX;
-import assignment2.MyGUI.MouseHandlerClass;
-import assignment2.MyGUI.NameValuePair;
- */
 import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.SequentialTransition;
@@ -91,8 +77,8 @@ public class MyGUI extends Application {
 	private ListView<String> historyView;
 	private WebHistory webHistory;
 
-	private String downloadDirectory = "./";
-	private String homepage = "http://www.google.ca/";
+	public static String downloadDirectory = "./";
+	public static String homepage = "http://www.google.ca/";
 
 	public static void main(String[] args) {		launch(args);	}
 
@@ -120,11 +106,11 @@ public class MyGUI extends Application {
 		// create a quit menu item for the file menu
 		this.quitItem = new MenuItem("Quit");
 		// set the quit menu item to execute Platform.exit() on clicked
-		this.quitItem.setOnAction(event -> {	
+		this.quitItem.setOnAction(event -> {
 			saveSettings();
 			Platform.exit(); });
 		// adds the quit menu item to the file menu
-		this.fileMenu.getItems().add(quitItem);		
+		this.fileMenu.getItems().add(quitItem);
 
 		/***********************************BOOKMARKS MENU********************************************/
 		// create the bookmarks menu object
@@ -132,36 +118,38 @@ public class MyGUI extends Application {
 		// initialize the bookmarks items array
 		this.bookmarkItems = new ArrayList<String>();
 		// function that adds a url to the bookmarks menu
-		this.addBookmark("http://www.google.ca/");		
+		this.addBookmark("http://www.google.ca/");
 
 		/***********************************SETTINGS MENU********************************************/
+		// initialize the settings menu object
 		this.settingsMenu = new Menu("Settings");
-		
+		// initialize the homepage menu item
 		this.homepageItem = new MenuItem("Homepage");
-		
+		// set the homepage item's action to show a change homepage url dialog
 		this.homepageItem.setOnAction((event) -> {
 			TextInputDialog dialog = new TextInputDialog("Type here");
 			dialog.setTitle("Change the browser homepage");
 			dialog.setHeaderText("Use this wizard to change your browser homepage.");
 			dialog.setContentText("Enter the URL for the new homepage:");
-			
+
 			// Traditional way to get the response value.
 			Optional<String> result = dialog.showAndWait();
 			if (result.isPresent()){
-				this.homepage = result.get();
+				// set the static homepage variable to the result
+				MyGUI.homepage = result.get();
 				// TODO: parse the result and add in missing parts like http: etc...
 				this.saveSettings();
 			}
 		});
-		
+		// initialize the downloads menu item object
 		this.downloadsItem = new MenuItem("Downloads");
-		
+		// set the downloads item's action to show a change downloads directory dialog
 		this.downloadsItem.setOnAction((event) -> {
 			TextInputDialog dialog = new TextInputDialog("Type here");
 			dialog.setTitle("Change the browser downloads directory");
 			dialog.setHeaderText("Use this wizard to change where your downloads are saved.");
 			dialog.setContentText("Enter the entire, complete, full filepath for the new download directory:");
-			
+
 			// Traditional way to get the response value.
 			Optional<String> result = dialog.showAndWait();
 			if (result.isPresent()){
@@ -169,14 +157,17 @@ public class MyGUI extends Application {
 				File dir = new File(result.get());
 				boolean successful = dir.mkdirs();
 				if (successful){
-					this.downloadDirectory = result.get();
+					// set the static download directory variable to the result
+					MyGUI.downloadDirectory = result.get();
+					// TODO: parse the result and ensure the folder structure is valid, etc...
 					this.saveSettings();
 				} else {
 					System.out.println("The directory could not be created, check folder write permissions");
 				}
 			}
 		});
-
+		// add the settings items to the settings menu
+		this.settingsMenu.getItems().addAll(this.homepageItem, this.downloadsItem);
 
 		/*******************************HELP MENU************************************/
 		// create the help menu object
@@ -226,7 +217,7 @@ public class MyGUI extends Application {
 			aboutInfo.show();
 		});
 		// add the new items to the help menu
-		this.helpMenu.getItems().addAll(this.getHelpItem, this.showHistoryItem, this.showAboutItem);	
+		this.helpMenu.getItems().addAll(this.getHelpItem, this.showHistoryItem, this.showAboutItem);
 
 		// add all of the menus and menu items to the menu bar
 		this.menuBar.getMenus().addAll(fileMenu, bookMarksMenu, helpMenu);
@@ -273,7 +264,7 @@ public class MyGUI extends Application {
 
 		/*******************************WEB VIEW*********************************************/
 		// TODO: Implement a TabPane to contain the WebView.  Each pane must access the same webEngine object.
-		// BONUS MARKS part C
+-		// BONUS MARKS part C
 		//This is a 3-parameter Lambda function for listening for changes
 		// of state for the web page loader.				VVV  VVV         VVV
 		engine.getLoadWorker().stateProperty().addListener(( ov, oldState,  newState)->
@@ -289,7 +280,7 @@ public class MyGUI extends Application {
 				} else if (this.webHistory.getCurrentIndex() == this.webHistory.getEntries().size()-1){
 					this.forwardButton.setDisable(true);
 				}
-				// bookmarks button is disabled if that page already exists in the menu. 	
+				// bookmarks button is disabled if that page already exists in the menu.
 				for (int i = 0; i < this.bookMarksMenu.getItems().size(); i++){
 					if (this.bookMarksMenu.getItems().get(i).getText().equals(this.engine.getLocation())){
 						this.bookmarkButton.setDisable(true);
@@ -326,6 +317,32 @@ public class MyGUI extends Application {
 		// sets the history view items to respond to on click events, moving to the correct part of the history timeline
 		this.historyView.setOnMouseClicked(this.mouseHandler);
 
+		/*******************************DOWNLOAD MANAGER*********************************************/
+		// TODO: re-implement this engine change listener so it  an catch other things like javascript, etc...
+		// TODO: make a private inner class out of this like the mouse listener
+		// --- > BONUS MARKS part A)
+		// monitor the location url, and if newLoc ends with one of the download file endings, create a new DownloadTask.
+		engine.locationProperty().addListener(new ChangeListener<String>() {
+			@Override public void changed(ObservableValue<? extends String> observableValue, String oldLoc, String newLocation) {
+				if(newLocation.endsWith(".exe")
+						|| newLocation.endsWith("PDF")
+						|| newLocation.endsWith(".ZIP")
+						|| newLocation.endsWith(".DOC")
+						|| newLocation.endsWith(".DOCX")
+						|| newLocation.endsWith(".XLS")
+						|| newLocation.endsWith(".XLSX")
+						|| newLocation.endsWith(".ISO")
+						|| newLocation.endsWith(".IMG")
+						|| newLocation.endsWith(".DMG")
+						|| newLocation.endsWith(".TAR")
+						|| newLocation.endsWith(".TGZ")
+						|| newLocation.endsWith(".JAR"))
+				{
+					DownloadBar newDownload = new DownloadBar(newLocation);
+				}
+			}
+		});
+
 
 		/*****************************SET STAGE*******************************/
 		// creates the root borderpane gui object
@@ -339,49 +356,25 @@ public class MyGUI extends Application {
 		//this.root.setRight(this.historyView);
 		this.hideHistory();
 		// sets the scene for the primary stage, passing in the root gui
-		primaryStage.setTitle("Assignment 2 GUI");
+		primaryStage.setTitle("Assignment 3 GUI");
 		this.scene = new Scene(root, 800, 800);
 		primaryStage.setScene(scene);
 		primaryStage.show();
-
-		// TODO: re-implement this engine change listener so it  an catch other things like javascript, etc...
-		// TODO: make a private inner class out of this like the mouse listener
-		// --- > BONUS MARKS part A)
-		// monitor the location url, and if newLoc ends with one of the download file endings, create a new DownloadTask.
-		engine.locationProperty().addListener(new ChangeListener<String>() {
-			@Override public void changed(ObservableValue<? extends String> observableValue, String oldLoc, String newLocation) {
-				if(newLocation.endsWith(".exe") 
-						|| newLocation.endsWith(".PDF")
-						|| newLocation.endsWith(".ZIP")
-						|| newLocation.endsWith(".DOC")
-						|| newLocation.endsWith(".DOCX")
-						|| newLocation.endsWith(".XLS")
-						|| newLocation.endsWith(".XLSX")
-						|| newLocation.endsWith(".ISO")
-						|| newLocation.endsWith(".IMG")
-						|| newLocation.endsWith(".DMG")
-						|| newLocation.endsWith(".TAR")
-						|| newLocation.endsWith(".TGZ")
-						|| newLocation.endsWith(".JAR"))
-				{
-					DownloadBar newDownload = new DownloadBar(newLocation);		  
-				}
-			}
-		});	
-
 	}
+
+
 
 	// Tell the engine to go back 1 page in the history
 	public void goBack()
-	{    
+	{
 		final WebHistory history = engine.getHistory();
 		ObservableList<WebHistory.Entry> entryList = history.getEntries();
 		int currentIndex = history.getCurrentIndex();
 
 		if (currentIndex > 0)
 		{			// 		  VVV  This is a no-parameter Lambda function run();
-			Platform.runLater( () -> { 
-				history.go(-1); 
+			Platform.runLater( () -> {
+				history.go(-1);
 				final String nextAddress = history.getEntries().get(currentIndex - 1).getUrl();
 			} );
 		}
@@ -389,18 +382,18 @@ public class MyGUI extends Application {
 
 	//Tell the engine to go forward 1 page in the history
 	public void goForward()
-	{    
+	{
 		final WebHistory history = engine.getHistory();
 		ObservableList<WebHistory.Entry> entryList = history.getEntries();
 		int currentIndex = history.getCurrentIndex();
 
 		if(currentIndex + 1 < entryList.size())
 		{	    					//This is a no-parameter Lambda function run();
-			Platform.runLater( () -> { 
-				history.go(1); 
+			Platform.runLater( () -> {
+				history.go(1);
 				final String nextAddress = history.getEntries().get(currentIndex + 1).getUrl();
 			});
-		}    
+		}
 	}
 
 	public void addBookmark(String s){
@@ -433,8 +426,8 @@ public class MyGUI extends Application {
 		ScaleTransition st = new ScaleTransition(Duration.millis(1000), this.historyView);
 		st.setFromX(1f);
 		st.setFromY(0.1f);
-		st.setToX(1f); 		
-		st.setToY(1f);		
+		st.setToX(1f);
+		st.setToY(1f);
 		//st.setCycleCount(2);
 		st.setAutoReverse(true);
 
@@ -454,8 +447,8 @@ public class MyGUI extends Application {
 		ScaleTransition st = new ScaleTransition(Duration.millis(1000), this.historyView);
 		st.setFromX(1f);
 		st.setFromY(1f);
-		st.setToX(0.01f); 		
-		st.setToY(0.01f);		
+		st.setToX(0.01f);
+		st.setToY(0.01f);
 		//st.setCycleCount(2);
 		st.setAutoReverse(true);
 
@@ -525,7 +518,7 @@ public class MyGUI extends Application {
 		/*
 		writeObject(bookmarkItems);
 		You should use a BufferedOutputWriter to write the file one line at a time,
-		. You read in one line at a time, and see if each line contains  (screenX, screenY, height, width, etc). If it does, 
+		. You read in one line at a time, and see if each line contains  (screenX, screenY, height, width, etc). If it does,
 		then you know what the number is that comes after the "=" sign. This part should have nothing to do with an arraylist.
 		// ArrayList<String> (bookmarkItems)
 
@@ -594,7 +587,7 @@ public class MyGUI extends Application {
 			String line = null;
 			while ((line = reader.readLine()) != null) {
 				this.bookmarkItems.add(line);
-			} 
+			}
 			reader.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -630,10 +623,10 @@ public class MyGUI extends Application {
 				this.primaryStage.setY(Double.parseDouble(settingsGotten.get(i).value));
 				break;
 			case "downloadDirectory":
-				this.downloadDirectory = settingsGotten.get(i).value;
+				MyGUI.downloadDirectory = settingsGotten.get(i).value;
 				break;
 			case "homepage":
-				this.homepage = settingsGotten.get(i).value;
+				MyGUI.homepage = settingsGotten.get(i).value;
 				break;
 			}
 		}
@@ -641,7 +634,7 @@ public class MyGUI extends Application {
 	}
 }
 
-/** Create a private inner class called NameValuePair: */
+/** Name value pair variable type convenience class */
 class NameValuePair {
 	public String name;
 	public String value;
