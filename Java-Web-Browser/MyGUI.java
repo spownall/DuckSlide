@@ -3,10 +3,13 @@ package assignment3;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -37,8 +40,11 @@ import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -61,7 +67,7 @@ public class MyGUI extends Application {
 	private Menu fileMenu;
 	private MenuItem quitItem;
 	private Menu bookMarksMenu;
-	private ArrayList<String> bookmarkItems;
+	//private ArrayList<String> bookmarkItems;
 	private Menu helpMenu;
 	private MenuItem getHelpItem;
 	private CheckMenuItem showHistoryItem;
@@ -107,7 +113,12 @@ public class MyGUI extends Application {
 		this.quitItem = new MenuItem("Quit");
 		// set the quit menu item to execute Platform.exit() on clicked
 		this.quitItem.setOnAction(event -> {
-			saveSettings();
+			try {
+				saveSettings();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			Platform.exit(); });
 		// adds the quit menu item to the file menu
 		this.fileMenu.getItems().add(quitItem);
@@ -116,9 +127,10 @@ public class MyGUI extends Application {
 		// create the bookmarks menu object
 		this.bookMarksMenu = new Menu("Bookmarks");
 		// initialize the bookmarks items array
-		this.bookmarkItems = new ArrayList<String>();
+		//this.bookmarkItems = new ArrayList<String>();
 		// function that adds a url to the bookmarks menu
 		this.addBookmark("http://www.google.ca/");
+		//this.bookmarkItems.add("http://www.google.ca/");
 
 		/***********************************SETTINGS MENU********************************************/
 		// initialize the settings menu object
@@ -138,7 +150,12 @@ public class MyGUI extends Application {
 				// set the static homepage variable to the result
 				MyGUI.homepage = result.get();
 				// TODO: parse the result and add in missing parts like http: etc...
-				this.saveSettings();
+				try {
+					this.saveSettings();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		});
 		// initialize the downloads menu item object
@@ -160,7 +177,12 @@ public class MyGUI extends Application {
 					// set the static download directory variable to the result
 					MyGUI.downloadDirectory = result.get();
 					// TODO: parse the result and ensure the folder structure is valid, etc...
-					this.saveSettings();
+					try {
+						this.saveSettings();
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				} else {
 					System.out.println("The directory could not be created, check folder write permissions");
 				}
@@ -220,7 +242,7 @@ public class MyGUI extends Application {
 		this.helpMenu.getItems().addAll(this.getHelpItem, this.showHistoryItem, this.showAboutItem);
 
 		// add all of the menus and menu items to the menu bar
-		this.menuBar.getMenus().addAll(fileMenu, bookMarksMenu, helpMenu);
+		this.menuBar.getMenus().addAll(fileMenu, bookMarksMenu, settingsMenu, helpMenu);
 
 		/*******************************BROWSER BAR*********************************************/
 		// creates the browser bar flowpane object
@@ -264,7 +286,7 @@ public class MyGUI extends Application {
 
 		/*******************************WEB VIEW*********************************************/
 		// TODO: Implement a TabPane to contain the WebView.  Each pane must access the same webEngine object.
--		// BONUS MARKS part C
+		// BONUS MARKS part C
 		//This is a 3-parameter Lambda function for listening for changes
 		// of state for the web page loader.				VVV  VVV         VVV
 		engine.getLoadWorker().stateProperty().addListener(( ov, oldState,  newState)->
@@ -288,6 +310,25 @@ public class MyGUI extends Application {
 				}
 				// sets the text field to the current url once the page is loaded
 				this.URLField.setText(this.engine.getLocation());
+			}
+		});
+
+		/*******************************Key Combination Shortcuts************************************/
+		this.showAboutItem.setAccelerator(new KeyCodeCombination(KeyCode.I, KeyCombination.CONTROL_DOWN));
+		this.quitItem.setAccelerator(new KeyCodeCombination(KeyCode.Q, KeyCombination.CONTROL_DOWN));
+		this.getHelpItem.setAccelerator(new KeyCodeCombination(KeyCode.H, KeyCombination.CONTROL_DOWN));
+		this.showHistoryItem.setAccelerator(new KeyCodeCombination(KeyCode.Y, KeyCombination.CONTROL_DOWN));
+
+		// add a key pressed listener to handle going forward or back via hotkey
+		this.browserView.setOnKeyPressed(new EventHandler<KeyEvent>(){
+			@Override
+			public void handle(KeyEvent event) {
+				if (event.getCode().equals(KeyCode.LEFT) && event.isControlDown()){
+					goBack();
+				}
+				if (event.getCode().equals(KeyCode.RIGHT) && event.isControlDown()){
+					goForward();
+				}
 			}
 		});
 
@@ -325,7 +366,7 @@ public class MyGUI extends Application {
 		engine.locationProperty().addListener(new ChangeListener<String>() {
 			@Override public void changed(ObservableValue<? extends String> observableValue, String oldLoc, String newLocation) {
 				if(newLocation.endsWith(".exe")
-						|| newLocation.endsWith("PDF")
+						|| newLocation.endsWith(".PDF")
 						|| newLocation.endsWith(".ZIP")
 						|| newLocation.endsWith(".DOC")
 						|| newLocation.endsWith(".DOCX")
@@ -336,6 +377,7 @@ public class MyGUI extends Application {
 						|| newLocation.endsWith(".DMG")
 						|| newLocation.endsWith(".TAR")
 						|| newLocation.endsWith(".TGZ")
+						|| newLocation.endsWith(".tgz")
 						|| newLocation.endsWith(".JAR"))
 				{
 					DownloadBar newDownload = new DownloadBar(newLocation);
@@ -360,6 +402,11 @@ public class MyGUI extends Application {
 		this.scene = new Scene(root, 800, 800);
 		primaryStage.setScene(scene);
 		primaryStage.show();
+
+		// read the settings to set up the window
+		readSettings();
+		// navigate to the initial homepage
+		this.engine.load(homepage);
 	}
 
 
@@ -402,7 +449,7 @@ public class MyGUI extends Application {
 		// set the bookmark menu item's on click event to load the specified page
 		newBookMark.setOnAction( (event) -> { this.engine.load(s); });
 		// add the bookmark to the bookmark items array
-		this.bookmarkItems.add(s);
+		//this.bookmarkItems.add(s);
 		this.bookMarksMenu.getItems().addAll(newBookMark);
 		this.bookmarkButton.setDisable(true);
 	}
@@ -506,34 +553,38 @@ public class MyGUI extends Application {
 			if (event.getSource().equals(forwardButton)){
 				goForward();
 			}
-
 		}
-
 	}
 
 
 	/*****************************SAVE SETTINGS*******************************/
 
-	public void saveSettings() {
+	public void saveSettings() throws IOException {
 		/*
 		writeObject(bookmarkItems);
 		You should use a BufferedOutputWriter to write the file one line at a time,
 		. You read in one line at a time, and see if each line contains  (screenX, screenY, height, width, etc). If it does,
 		then you know what the number is that comes after the "=" sign. This part should have nothing to do with an arraylist.
 		// ArrayList<String> (bookmarkItems)
-
 		ObjectInput
 		 */
 
-		try (BufferedWriter bkmkWriter = Files.newBufferedWriter(Paths.get("./bkmks.txt"));){
+		// create a new bookmarks file with an ObjectOutputStream
+		try {
+			FileOutputStream out = new FileOutputStream("./bkmks.txt");
+			ObjectOutputStream oout = new ObjectOutputStream(out);
 
-			for (int i = 0; i < bookmarkItems.size(); i++) {
-				bkmkWriter.write(bookmarkItems.get(i));
-				bkmkWriter.newLine();
+			ArrayList<String> bookmarkItems = new ArrayList<String>();
+			
+			for (int i = 0; i < this.bookMarksMenu.getItems().size(); i++){
+				bookmarkItems.add(bookMarksMenu.getItems().get(i).getText());
 			}
-			bkmkWriter.close();
+			// write something in the file
+			oout.writeObject(bookmarkItems);
+			// close the output stream
+			oout.close();
 
-		} catch (IOException e1) {
+		} catch (Exception e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
@@ -558,84 +609,107 @@ public class MyGUI extends Application {
 		NameValuePair homepageSetting = new NameValuePair("homepage", homepage);
 		savedSettings.add(homepageSetting);
 
-		try(  BufferedWriter settingsWriter = Files.newBufferedWriter(Paths.get("./settings.txt"));){
+		// create a new settings file with an ObjectOutputStream
+		try {
+			FileOutputStream out = new FileOutputStream("./settings.txt");
+			ObjectOutputStream oout = new ObjectOutputStream(out);
 
-			for (int i = 0; i < savedSettings.size() -1; i++) {
-				NameValuePair nvp = (savedSettings.get(i));
-				settingsWriter.write( nvp.name + "=" + nvp.value );
-				settingsWriter.newLine();
-			}
-			settingsWriter.close();
+			// write something in the file
+			oout.writeObject(savedSettings);
+			// close the output stream
+			oout.close();
 
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} catch (Exception e1) {
+			// TODO: catch block
+			e1.printStackTrace();
 		}
 	}
 
-	/*****************************LOAD SETTINGS*******************************/
+	/*****************************LOAD SETTINGS********************************/
 
-	public void readSettings() {
+	public void readSettings() throws IOException {
 		/*	open files and display
 				read before the = and after it too
 				Set the appropriate values for width/height, and screenX/screenY position, download directory, and home page.
-
 				BufferedInputReader to read the line one at a time
 		 */
-		this.bookmarkItems.clear();
-		try (BufferedReader reader = Files.newBufferedReader(Paths.get("./bkmk.txt"))){
-			String line = null;
-			while ((line = reader.readLine()) != null) {
-				this.bookmarkItems.add(line);
-			}
-			reader.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		};
+		File bkmkFile = new File("./bkmks.txt");
+		if (bkmkFile.exists()){
+			// clear the bookmarks menu first before adding new items
+			this.bookMarksMenu.getItems().clear();
+			try {
+				// create an ObjectInputStream for the file
+				ObjectInputStream ois =
+						new ObjectInputStream(new FileInputStream("./bkmks.txt"));
 
+				// read 
+				ArrayList<String> bookmarkItems = (ArrayList<String>)ois.readObject();
+				for (int i = 0; i < bookmarkItems.size(); i++){
+					this.addBookmark(bookmarkItems.get(i));
+				}
+				
+			} catch (Exception ex){
+				// TODO: catch block
+				ex.printStackTrace();
+			}
+
+		} else {
+			bkmkFile.createNewFile();
+		}
+
+		// array to store the retrieved settings
 		ArrayList<NameValuePair> settingsGotten = new ArrayList<NameValuePair>();
-		try (BufferedReader reader2 = Files.newBufferedReader(Paths.get("./settings.txt"))){
-			String line = null;
-			while ((line = reader2.readLine()) != null) {
-				String name = line.substring(0, line.indexOf("="));
-				String value = line.substring(line.indexOf("=")+1, line.length());
-				NameValuePair nvp = new NameValuePair(name,value);
-				settingsGotten.add(nvp);
+		
+		File settingsFile = new File("./settings.txt");
+		if (settingsFile.exists()){
+			try {
+				// create an ObjectInputStream for the file
+				ObjectInputStream ois =
+						new ObjectInputStream(new FileInputStream("./settings.txt"));
+				// read 
+				settingsGotten = (ArrayList<NameValuePair>)ois.readObject();
+			} catch (Exception ex){
+				// TODO: catch block
+				ex.printStackTrace();
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		for (int i = 0; i < settingsGotten.size(); i++){
-			switch (settingsGotten.get(i).name) {
-			case "height":
-				this.primaryStage.setHeight(Double.parseDouble(settingsGotten.get(i).value));
-				break;
-			case "width":
-				this.primaryStage.setWidth(Double.parseDouble(settingsGotten.get(i).value));
-				break;
-			case "screenX":
-				this.primaryStage.setX(Double.parseDouble(settingsGotten.get(i).value));
-				break;
-			case "screenY":
-				this.primaryStage.setY(Double.parseDouble(settingsGotten.get(i).value));
-				break;
-			case "downloadDirectory":
-				MyGUI.downloadDirectory = settingsGotten.get(i).value;
-				break;
-			case "homepage":
-				MyGUI.homepage = settingsGotten.get(i).value;
-				break;
+			
+			for (int i = 0; i < settingsGotten.size(); i++){
+				switch (settingsGotten.get(i).name) {
+				case "height":
+					this.primaryStage.setHeight(Double.parseDouble(settingsGotten.get(i).value));
+					break;
+				case "width":
+					this.primaryStage.setWidth(Double.parseDouble(settingsGotten.get(i).value));
+					break;
+				case "screenX":
+					this.primaryStage.setX(Double.parseDouble(settingsGotten.get(i).value));
+					break;
+				case "screenY":
+					this.primaryStage.setY(Double.parseDouble(settingsGotten.get(i).value));
+					break;
+				case "downloadDirectory":
+					MyGUI.downloadDirectory = settingsGotten.get(i).value;
+					break;
+				case "homepage":
+					MyGUI.homepage = settingsGotten.get(i).value;
+					break;
+				}
 			}
+		} else {
+			settingsFile.createNewFile();
 		}
-
 	}
 }
 
+
+
 /** Name value pair variable type convenience class */
-class NameValuePair {
+class NameValuePair implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 3362436935497828702L;
 	public String name;
 	public String value;
 
